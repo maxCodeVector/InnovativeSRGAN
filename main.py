@@ -13,7 +13,7 @@ num_epoch = 100
 ResumePath = './checkpoint/model_epoch_11.pth'  # 输入resume的path,''为从头开始
 initlr = 0.0001
 start_epoch = 1
-
+steps = 10
 
 def Label(shape, isReal):
     real = torch.Tensor([1]).cuda()
@@ -32,31 +32,31 @@ def Label(shape, isReal):
 
 
 def draw(inputHR, G1output, G2output, targetLR):
-    inputHR = (inputHR + 1) * 122.5
+    inputHR = (inputHR.cpu() + 1) * 122.5
     G1output = (G1output.cpu().detach() + 1) * 122.5
     G2output = (G2output.cpu().detach() + 1) * 122.5
-    targetLR = (targetLR + 1) * 122.5
-    inputHR = inputHR[0].cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
-    G1output = G1output[0].cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
-    G2output = G2output[0].cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
-    targetLR = targetLR[0].cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
+    targetLR = (targetLR.cpu() + 1) * 122.5
+    inputHR = inputHR[0].numpy().astype(np.uint8).transpose(1, 2, 0)
+    G1output = G1output[0].numpy().astype(np.uint8).transpose(1, 2, 0)
+    G2output = G2output[0].numpy().astype(np.uint8).transpose(1, 2, 0)
+    targetLR = targetLR[0].numpy().astype(np.uint8).transpose(1, 2, 0)
 
-    plt.figure(figsize=(12, 4))
-    ax = plt.subplot("141")
+    plt.figure(figsize=(8, 8))
+    ax = plt.subplot("221")
     ax.imshow(inputHR)
     ax.set_title("inputHR")
 
     # plt.figure()
-    ax = plt.subplot("142")
+    ax = plt.subplot("222")
     ax.imshow(G1output)
     ax.set_title("G1output")
 
     # plt.figure()
-    ax = plt.subplot("143")
+    ax = plt.subplot("223")
     ax.imshow(G2output)
     ax.set_title("G2output")
 
-    ax = plt.subplot("144")
+    ax = plt.subplot("224")
     ax.imshow(targetLR)
     ax.set_title("targetLR")
 
@@ -65,12 +65,14 @@ def draw(inputHR, G1output, G2output, targetLR):
 
 def adjust_learning_rate(epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
-    lr = initlr * (0.1 ** (epoch / num_epoch))
+    lr = initlr * (0.1 ** (epoch / steps))
     return lr
 
 
 def main(resumePath):
-    img_data = ImageFrom2Folder('Dataset/HRimages', 'Dataset/LRimages')
+    dataset_path = r'C:\Users\hya\Downloads\pytorch-SRResNet-master\pytorch-SRResNet-master\data\%d'
+    # img_data = ImageFrom2Folder('Dataset/HRimages', 'Dataset/LRimages')
+    img_data = ImageFrom2Folder(dataset_path % 20, dataset_path % 20)
     data_loader = DataLoader(img_data, batch_size=2, shuffle=True)
 
     G1 = Net_G()
@@ -99,6 +101,7 @@ def main(resumePath):
             optimizer_D.load_state_dict(checkpoint["optimizerD"].state_dict())
         else:
             print("=> no checkpoint found at '{}'".format(resumePath))
+            start_epoch = 1
     else:
         start_epoch = 1
 
@@ -115,6 +118,7 @@ def main(resumePath):
             # =================Train generator
             imgHR = Variable(imgHR).cuda()
             imgLR = Variable(imgLR, requires_grad=False).cuda()
+            imgLRx = Variable(imgLR).cuda()
 
             output1 = G1(imgHR)
             output2 = G2(output1)
@@ -134,13 +138,16 @@ def main(resumePath):
                 dis = D(output1)
                 lossGAN = creterion(dis, Label(dis, True))
                 lossCycle = torch.mean(torch.abs(output2 - imgHR))
-                lossG = lossGAN + 10 * lossCycle
+                lossCycle2 = torch.mean(torch.abs(G1(G2(imgLRx)) - imgLRx))
+                lossG = lossGAN + 40 * lossCycle + 10 * lossCycle2
                 lossG.backward()
                 optimizer_G.step()
 
-            if i % 10 == 0:
-                print("===> Epoch[{}]({}/{}): LossG: {:.5} (LossGAN:{:.5}, LossCycle:{:.5}), LossD: {:.5}".format(
-                    epoch, i, len(data_loader), lossG, lossGAN, lossCycle, lossD))
+            if i % 10 == 9:
+                print("===> Epoch[{}]({}/{}): "
+                      "LossG: {:.5} (LossGAN:{:.5}, LossCycle:{:.5}, LossCycle2:{:.5}),"
+                      " LossD: {:.5}"
+                    .format(epoch, i, len(data_loader), lossG, lossGAN, lossCycle, lossCycle2, lossD))
                 draw(imgHR, output1, output2, imgLR)
                 # draw('input HR %d' % i, (imgHR + 1) * 122.5)
                 # draw('G2\'s output', (output2.cpu().detach() + 1) * 122.5)
@@ -152,12 +159,13 @@ def main(resumePath):
 
 
         # =================Save checkpoint
-        model_out_path = "checkpoint/" + "model_epoch_{}.pth".format(epoch)
-        state = {"epoch": epoch, "G1": G1, "D": D, "G2": G2,
-                 "optimizerD": optimizer_D, "optimizerG": optimizer_G}
-        if not os.path.exists("checkpoint/"):
-            os.makedirs("checkpoint/")
-        torch.save(state, model_out_path)
+        if epoch % 10 == 0:
+            model_out_path = "checkpoint/" + "model_epoch_{}.pth".format(epoch)
+            state = {"epoch": epoch, "G1": G1, "D": D, "G2": G2,
+                     "optimizerD": optimizer_D, "optimizerG": optimizer_G}
+            if not os.path.exists("checkpoint/"):
+                os.makedirs("checkpoint/")
+            torch.save(state, model_out_path)
 
 
 if __name__ == "__main__":

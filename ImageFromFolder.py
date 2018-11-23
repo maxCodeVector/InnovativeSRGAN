@@ -5,26 +5,37 @@ from torchvision import transforms
 
 extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif']
 transformHR = transforms.Compose([
-    transforms.CenterCrop(256),
+    transforms.CenterCrop(128),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
-    transforms.Normalize((.5,.5,.5),(.5,.5,.5))
-    ])
+    transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+])
 transformLR = transforms.Compose([
-    transforms.CenterCrop(64),
+    transforms.CenterCrop(128),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
-    transforms.Normalize((.5,.5,.5),(.5,.5,.5))
-    ])
+    transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+])
+
 
 class ImageFrom2Folder(data.Dataset):
     def __init__(self, HRpath, LRpath):
         super(ImageFrom2Folder, self).__init__()
-        self.HRimages = make_dataset(HRpath)
-        self.LRimages = make_dataset(LRpath)
+        # self.HRimages = make_dataset(HRpath)
+        # self.LRimages = make_dataset(LRpath)
+        HRimages = make_dataset(HRpath)
+        LRimages = make_dataset(LRpath)
+        self.HRimages = []
+        self.LRimages = []
+        for HR in HRimages:
+            self.HRimages.append(pil_loader(HR, True))
+        for LR in LRimages:
+            self.LRimages.append(pil_loader(LR, False))
 
     def __getitem__(self, index):
-        HR = pil_loader(self.HRimages[index], True)
-        LR = pil_loader(self.LRimages[index], False)
-        return (HR, LR)
+        # HR = pil_loader(self.HRimages[index], True)
+        # LR = pil_loader(self.LRimages[index], False)
+        # return (HR, LR)
+        #
+        return self.HRimages[index], self.LRimages[index]
 
     def __len__(self):
         return len(self.HRimages)
@@ -56,11 +67,13 @@ def make_dataset(dir):
 
     return images
 
+
 def has_file_allowed_extension(filename):
     filename_lower = filename.lower()
     return any(filename_lower.endswith(ext) for ext in extensions)
 
-def pil_loader(path, HR):# 根据地址读取图像
+
+def pil_loader(path, HR):  # 根据地址读取图像
     with open(path, 'rb') as f:
         img = Image.open(f)
         img = img.convert('RGB')

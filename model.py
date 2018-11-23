@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
+
 def make_layer(block, num_of_layer):
     layers = [block() for _ in range(num_of_layer)]
     return nn.Sequential(*layers)
@@ -34,6 +35,10 @@ class _Residual_Block(nn.Module):
 
 
 class Net_G(nn.Module):
+    """
+    to make a high resolution image to a low resolution:
+    eg. 256*256 --> 64*64
+    """
     def __init__(self):
         super(Net_G, self).__init__()
         # padding is to be sure
@@ -69,6 +74,10 @@ class Net_G(nn.Module):
 
 
 class Reverse_G(nn.Module):
+    """
+        to make a low resolution image to a high resolution:
+        eg. 64*64 --> 256*256
+    """
     def __init__(self):
         super(Reverse_G, self).__init__()
         self.conv_input = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=9, stride=1, padding=4, bias=False)
@@ -106,6 +115,9 @@ class Reverse_G(nn.Module):
 
 
 class Net_D(nn.Module):
+    """
+    judge a image if it is a real low resolution picture or a fake one
+    """
     def __init__(self):
         super(Net_D, self).__init__()
         stride = 1
@@ -131,5 +143,4 @@ class Net_D(nn.Module):
 
     def forward(self, x):
         out = self.features(self.conv_input(x))
-        # out = self.sigmoid(out)
         return out
