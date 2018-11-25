@@ -1,23 +1,28 @@
+import numpy as np
 import os
+
+import torch
 from PIL import Image
 from torch.utils import data
 from torchvision import transforms
+import downsimple
+
 
 extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif']
 transformHR = transforms.Compose([
-    transforms.CenterCrop(128),
+    transforms.CenterCrop(256),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
     transforms.Normalize((.5, .5, .5), (.5, .5, .5))
 ])
 transformLR = transforms.Compose([
-    transforms.CenterCrop(128),
+    transforms.CenterCrop(64),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
     transforms.Normalize((.5, .5, .5), (.5, .5, .5))
 ])
 
 
 class ImageFrom2Folder(data.Dataset):
-    def __init__(self, HRpath, LRpath):
+    def __init__(self, HRpath, LRpath, num=10):
         super(ImageFrom2Folder, self).__init__()
         # self.HRimages = make_dataset(HRpath)
         # self.LRimages = make_dataset(LRpath)
@@ -25,9 +30,9 @@ class ImageFrom2Folder(data.Dataset):
         LRimages = make_dataset(LRpath)
         self.HRimages = []
         self.LRimages = []
-        for HR in HRimages:
+        for HR in HRimages[0:num]:
             self.HRimages.append(pil_loader(HR, True))
-        for LR in LRimages:
+        for LR in LRimages[0:num]:
             self.LRimages.append(pil_loader(LR, False))
 
     def __getitem__(self, index):
@@ -86,3 +91,14 @@ def pil_loader(path, HR):  # 根据地址读取图像
 # i = ImageFromFolder('Dataset/HRimages', 'Dataset/LRimages')
 # print(i.__getitem__(0)[0].size())
 # i.__getitem__(0)[1].show()
+
+
+def get_downsimple_Tensor(images):
+    res = []
+    high = ((images + 1) * 255 / 2).numpy().astype(np.uint8).transpose(0, 2, 3, 1)
+    for img in high:
+        dows = downsimple.newDownscale(img, 4)
+        dows = transforms.ToTensor()(np.array(dows))
+        dows = transforms.Normalize((.5, .5, .5), (.5, .5, .5))(dows)
+        res.append(dows.numpy())
+    return torch.Tensor(res)
