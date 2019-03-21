@@ -83,7 +83,7 @@ class Reverse_G(nn.Module):
         self.conv_input = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=9, stride=1, padding=4, bias=False)
         self.relu = nn.LeakyReLU(0.2, inplace=True)
 
-        self.residual = make_layer(_Residual_Block, 5)
+        self.residual = make_layer(_Residual_Block, 6)
 
         self.conv_mid = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn_mid = nn.InstanceNorm2d(64, affine=True)

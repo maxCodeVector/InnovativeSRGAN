@@ -3,55 +3,60 @@ from PIL import Image
 from torch.utils import data
 from torchvision import transforms
 
+
 extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif']
 transformHR = transforms.Compose([
-    transforms.CenterCrop(128),
+    transforms.CenterCrop(256),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
-    transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 transformLR = transforms.Compose([
-    transforms.CenterCrop(128),
+    transforms.CenterCrop(64),
     transforms.ToTensor(),  # range [0, 255] -> [0.0,1.0]
-    transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
 
 class ImageFrom2Folder(data.Dataset):
-    def __init__(self, HRpath, LRpath):
+    def __init__(self, HRpath, LRpath, num=-1):
         super(ImageFrom2Folder, self).__init__()
-        # self.HRimages = make_dataset(HRpath)
-        # self.LRimages = make_dataset(LRpath)
         HRimages = make_dataset(HRpath)
         LRimages = make_dataset(LRpath)
         self.HRimages = []
         self.LRimages = []
-        for HR in HRimages:
+        for HR in HRimages[0:num if num >= 0 else len(HRimages)]:
             self.HRimages.append(pil_loader(HR, True))
-        for LR in LRimages:
+        for LR in LRimages[0:num if num >= 0 else len(LRimages)]:
             self.LRimages.append(pil_loader(LR, False))
 
     def __getitem__(self, index):
-        # HR = pil_loader(self.HRimages[index], True)
-        # LR = pil_loader(self.LRimages[index], False)
-        # return (HR, LR)
-        #
         return self.HRimages[index], self.LRimages[index]
 
     def __len__(self):
         return len(self.HRimages)
 
 
-# class ImageFrom1Folder(data.Dataset):
-#     def __init__(self, path):
-#         super(ImageFrom1Folder, self).__init__()
-#         self.images = make_dataset(path)
-#
-#     def __getitem__(self, index):
-#         image = pil_loader(self.images[index], False)
-#         return image
-#
-#     def __len__(self):
-#         return len(self.images)
+class ImageFrom3Folder(data.Dataset):
+    def __init__(self, HRpath, LRpath, referencePath, num=-1):
+        super(ImageFrom3Folder, self).__init__()
+        HRimages = make_dataset(HRpath)
+        LRimages = make_dataset(LRpath)
+        referenceImages = make_dataset(referencePath)
+        self.HRimages = []
+        self.LRimages = []
+        self.referenceImages = []
+        for HR in HRimages[0:num if num >= 0 else len(HRimages)]:
+            self.HRimages.append(pil_loader(HR, True))
+        for LR in LRimages[0:num if num >= 0 else len(LRimages)]:
+            self.LRimages.append(pil_loader(LR, False))
+        for RI in referenceImages[0:num if num >= 0 else len(referenceImages)]:
+            self.referenceImages.append(pil_loader(RI, True))
+
+    def __getitem__(self, index):
+        return self.HRimages[index], self.LRimages[index], self.referenceImages[index]
+
+    def __len__(self):
+        return len(self.HRimages)
 
 
 def make_dataset(dir):
@@ -82,7 +87,3 @@ def pil_loader(path, HR):  # 根据地址读取图像
         else:
             img = transformLR(img)
         return img
-
-# i = ImageFromFolder('Dataset/HRimages', 'Dataset/LRimages')
-# print(i.__getitem__(0)[0].size())
-# i.__getitem__(0)[1].show()
