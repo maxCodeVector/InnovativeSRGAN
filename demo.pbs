@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N SRGANs_sh
+#PBS -e /home/cs-chengr/SRGroup/logs/error
+#PBS -o /home/cs-chengr/SRGroup/logs/stand
+#PBS -l nodes=1:ppn=24
+#PBS -l walltime=999:00:00
+#PBS -q gpu
+#PBS -W x=GRES:gpu@1
+#PBS -V
+#PBS -S /bin/bash
+
+source /opt/intel/composer_xe_2015/bin/compilervars.sh intel64
+source /opt/intel/mkl/bin/intel64/mklvars_intel64.sh
+source /opt/intel/impi/5.0.2.044/bin64/mpivars.sh
+
+cd /home/cs-chengr/SRGroup/
+echo 'SRGroup_Test'
+date
+mpirun -genv I_MPIDEVICE rdssm -machinefile $PBS_NODEFILE -np 24 python /home/cs-chengr/SRGroup/demo.py
+date 
